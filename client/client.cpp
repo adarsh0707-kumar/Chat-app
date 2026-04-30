@@ -4,18 +4,28 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <thread>
+#include <atomic>
 
 using namespace std;
+
+atomic<bool> running(true);
 
 void receive_messages(int sock)
 {
     char buffer[1024];
-    while (true)
+    while (running)
     {
         int bytes = read(sock, buffer, sizeof(buffer));
         if (bytes > 0)
         {
-            cout << string(buffer, bytes) << endl;
+            cout << "\n"
+                 << string(buffer, bytes) << endl;
+            cout.flush();
+        }
+        else
+        {
+            running = false;
+            break;
         }
     }
 }
@@ -51,13 +61,19 @@ int main()
 
         if (message == "exit")
         {
+            running = false;
+            shutdown(sock, SHUT_RDWR);
+            close(sock);
             break;
         }
 
         send(sock, message.c_str(), message.size(), 0);
     }
-    receiver.join();
-    close(sock);
+
+    if (receiver.joinable())
+    {
+        receiver.join();
+    }
 
     return 0;
 }
