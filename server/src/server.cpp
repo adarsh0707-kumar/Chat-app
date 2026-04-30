@@ -1,7 +1,9 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <mutex>
 #include <thread>
+#include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
 
@@ -13,23 +15,34 @@ mutex clients_mutex;
 void handle_client(int client_socket)
 {
     cout << "Client connected : " << client_socket << endl;
-
+    char buffer[1024];
     // for now , just keep connection alive
 
     while (true)
     {
-        char buffer[1024];
+        memset(buffer, 0, sizeof(buffer));
+
         int bytes = read(client_socket, buffer, sizeof(buffer));
 
-        if(bytes <= 0){
+        if (bytes <= 0)
+        {
             cout << "Client disconnected : " << client_socket << endl;
             close(client_socket);
+
+            // Remove client from list
+            lock_guard<mutex> lock(clients_mutex);
+            clients.erase(remove(clients.begin(), clients.end(), client_socket), clients.end());
+
             break;
         }
+
+        string messages(buffer, bytes);
+        cout << "Received from client " << client_socket << ": " << messages << endl;
     }
 }
 
-int main(){
+int main()
+{
     int server_fd, client_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
@@ -40,14 +53,14 @@ int main(){
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(9000);
 
-    bind(server_fd, (struct sockaddr*)&address, sizeof(address));
+    bind(server_fd, (struct sockaddr *)&address, sizeof(address));
     listen(server_fd, 10);
 
     cout << "Server is listening on port 9000..." << endl;
 
     while (true)
     {
-        client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+        client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
 
         {
             lock_guard<mutex> lock(clients_mutex);
@@ -60,19 +73,4 @@ int main(){
 
     close(server_fd);
     return 0;
-    
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
