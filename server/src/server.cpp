@@ -6,30 +6,43 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <map>
 
 using namespace std;
 
-vector<int> clients;
+map<int, string> clients;
 mutex clients_mutex;
-
 
 void broadcast_message(const string &message, int sender_socket)
 {
     lock_guard<mutex> lock(clients_mutex);
-    for (int client : clients)
+    for (auto &[client_socket, _] : clients)
     {
-        if (client != sender_socket)
+        if (client_socket != sender_socket)
         {
-            send(client, message.c_str(), message.size(), 0);
+            send(client_socket, message.c_str(), message.size(), 0);
         }
     }
 }
-
 
 void handle_client(int client_socket)
 {
     cout << "Client connected : " << client_socket << endl;
     char buffer[1024];
+
+    char name_buffer[1024] = {0};
+
+    read(client_socket, name_buffer, sizeof(name_buffer));
+
+    string username(name_buffer);
+
+    {
+        lock_guard<mutex> lock(clients_mutex);
+        clients[client_socket] = username;
+    }
+
+    cout << username << " joined the chat!" << endl;
+
     // for now , just keep connection alive
 
     while (true)
@@ -43,14 +56,27 @@ void handle_client(int client_socket)
             cout << "Client disconnected : " << client_socket << endl;
             close(client_socket);
 
-            // Remove client from list
-            lock_guard<mutex> lock(clients_mutex);
-            clients.erase(remove(clients.begin(), clients.end(), client_socket), clients.end());
+            std::string username;
+
+            {
+                std::lock_guard<std::mutex> lock(clients_mutex);
+                username = clients[client_socket];
+                clients.erase(client_socket);
+            }
+
+            std::cout << username << " left the chat\n";
 
             break;
         }
 
-        string message = "Client " + to_string(client_socket) + " : " + string(buffer, bytes);
+        std::string username;
+
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            username = clients[client_socket];
+        }
+
+        std::string message = username + ": " + std::string(buffer, bytes);
 
         cout << message << std::endl;
 
@@ -81,7 +107,7 @@ int main()
 
         {
             lock_guard<mutex> lock(clients_mutex);
-            clients.push_back(client_socket);
+            clients[client_socket] = "Unknown";
         }
 
         thread t(handle_client, client_socket);
