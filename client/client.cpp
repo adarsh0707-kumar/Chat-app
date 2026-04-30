@@ -19,11 +19,19 @@ int main() {
 
     cout << "Connected to server!" << endl;
 
-    // Send one message to server
-    const string msg = "Hello, Server!";
-    send(sock, msg.c_str(), msg.size(), 0);
+    // Send multiple messages to the server
 
-    sleep(5); // Keep connection alive for a while
+    while (true){
+        string message;
+        cout << "Enter message to send (type 'exit' to quit): ";
+        getline(cin, message);
+
+        if (message == "exit") {
+            break;
+        }
+
+        send(sock, message.c_str(), message.size(), 0);
+    }
     close(sock);
 
     return 0;
