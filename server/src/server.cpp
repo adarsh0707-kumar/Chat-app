@@ -12,6 +12,20 @@ using namespace std;
 vector<int> clients;
 mutex clients_mutex;
 
+
+void broadcast_message(const string &message, int sender_socket)
+{
+    lock_guard<mutex> lock(clients_mutex);
+    for (int client : clients)
+    {
+        if (client != sender_socket)
+        {
+            send(client, message.c_str(), message.size(), 0);
+        }
+    }
+}
+
+
 void handle_client(int client_socket)
 {
     cout << "Client connected : " << client_socket << endl;
@@ -36,8 +50,11 @@ void handle_client(int client_socket)
             break;
         }
 
-        string messages(buffer, bytes);
-        cout << "Received from client " << client_socket << ": " << messages << endl;
+        string message = "Client " + to_string(client_socket) + " : " + string(buffer, bytes);
+
+        cout << message << std::endl;
+
+        broadcast_message(message, client_socket);
     }
 }
 
