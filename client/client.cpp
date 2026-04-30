@@ -3,8 +3,20 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <thread>
 
 using namespace std;
+
+void receive_messages(int sock){
+    char buffer[1024];
+    while (true){
+        int bytes = read(sock, buffer, sizeof(buffer));
+        if (bytes > 0){
+            cout << string(buffer, bytes) << endl;
+        }
+    }
+}
+
 
 int main() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -20,6 +32,7 @@ int main() {
     cout << "Connected to server!" << endl;
 
     // Send multiple messages to the server
+    thread receiver(receive_messages, sock);
 
     while (true){
         string message;
@@ -32,6 +45,7 @@ int main() {
 
         send(sock, message.c_str(), message.size(), 0);
     }
+    receiver.join();
     close(sock);
 
     return 0;
