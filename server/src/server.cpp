@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <map>
 #include <sstream>
+#include <ctime>
 
 using namespace std;
 
@@ -21,7 +22,11 @@ void broadcast_message(const string &message, int sender_socket)
     {
         if (client_socket != sender_socket)
         {
-            send(client_socket, message.c_str(), message.size(), 0);
+            if (send(client_socket, message.c_str(), message.size(), 0) < 0)
+            {
+                // Handle send error, perhaps remove client
+                clients.erase(client_socket);
+            }
         }
     }
 }
@@ -42,14 +47,24 @@ void handle_private_message(const std::string &input, int sender_socket)
     {
         if (name == target_user)
         {
-            std::string full_msg = "[PRIVATE] " + sender_name + ": " + msg;
-            send(sock, full_msg.c_str(), full_msg.size(), 0);
+            std::time_t now = std::time(nullptr);
+            std::tm *local_time = std::localtime(&now);
+            char time_str[6];
+            std::strftime(time_str, sizeof(time_str), "%H:%M", local_time);
+            std::string full_msg = "[" + std::string(time_str) + "] [PRIVATE] " + sender_name + ": " + msg;
+            if (send(sock, full_msg.c_str(), full_msg.size(), 0) < 0)
+            {
+                // Handle error
+            }
             return;
         }
     }
     // user not found
     std::string error = "User not found\n";
-    send(sender_socket, error.c_str(), error.size(), 0);
+    if (send(sender_socket, error.c_str(), error.size(), 0) < 0)
+    {
+        // Handle error
+    }
 }
 
 void handle_client(int client_socket)
@@ -59,16 +74,63 @@ void handle_client(int client_socket)
 
     char name_buffer[1024] = {0};
 
-    read(client_socket, name_buffer, sizeof(name_buffer));
+    int bytes = read(client_socket, name_buffer, sizeof(name_buffer));
+    if (bytes <= 0)
+    {
+        close(client_socket);
+        return;
+    }
 
     string username(name_buffer);
+    // Trim whitespace
+    username.erase(username.begin(), find_if(username.begin(), username.end(), [](unsigned char ch)
+                                             { return !isspace(ch); }));
+    username.erase(find_if(username.rbegin(), username.rend(), [](unsigned char ch)
+                           { return !isspace(ch); })
+                       .base(),
+                   username.end());
+
+    if (username.empty())
+    {
+        std::string error = "Username cannot be empty\n";
+        send(client_socket, error.c_str(), error.size(), 0);
+        close(client_socket);
+        return;
+    }
 
     {
         lock_guard<mutex> lock(clients_mutex);
+        bool exists = false;
+        for (auto &[sock, name] : clients)
+        {
+            if (name == username)
+            {
+                exists = true;
+                break;
+            }
+        }
+        if (exists)
+        {
+            std::string error = "Username already taken\n";
+            if (send(client_socket, error.c_str(), error.size(), 0) < 0)
+            {
+                // Handle error
+            }
+            close(client_socket);
+            return;
+        }
         clients[client_socket] = username;
     }
 
     cout << username << " joined the chat!" << endl;
+
+    // Broadcast join message
+    std::time_t now = std::time(nullptr);
+    std::tm *local_time = std::localtime(&now);
+    char time_str[6];
+    std::strftime(time_str, sizeof(time_str), "%H:%M", local_time);
+    std::string join_msg = "[" + std::string(time_str) + "] " + username + " joined the chat";
+    broadcast_message(join_msg, client_socket);
 
     // for now , just keep connection alive
 
@@ -93,6 +155,14 @@ void handle_client(int client_socket)
 
             std::cout << username << " left the chat\n";
 
+            // Broadcast leave message
+            std::time_t now = std::time(nullptr);
+            std::tm *local_time = std::localtime(&now);
+            char time_str[6];
+            std::strftime(time_str, sizeof(time_str), "%H:%M", local_time);
+            std::string leave_msg = "[" + std::string(time_str) + "] " + username + " left the chat";
+            broadcast_message(leave_msg, -1); // -1 to send to all
+
             break;
         }
 
@@ -114,11 +184,18 @@ void handle_client(int client_socket)
             std::string help =
                 "Commands:\n"
                 "/msg <user> <message> - private message\n";
-            send(client_socket, help.c_str(), help.size(), 0);
+            if (send(client_socket, help.c_str(), help.size(), 0) < 0)
+            {
+                // Handle error
+            }
         }
         else
         {
-            std::string message = username + ": " + input;
+            std::time_t now = std::time(nullptr);
+            std::tm *local_time = std::localtime(&now);
+            char time_str[6];
+            std::strftime(time_str, sizeof(time_str), "%H:%M", local_time);
+            std::string message = "[" + std::string(time_str) + "] " + username + ": " + input;
             cout << message << std::endl;
             broadcast_message(message, client_socket);
         }
