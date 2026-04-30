@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <map>
+#include <sstream>
 
 using namespace std;
 
@@ -23,6 +24,32 @@ void broadcast_message(const string &message, int sender_socket)
             send(client_socket, message.c_str(), message.size(), 0);
         }
     }
+}
+
+void handle_private_message(const std::string &input, int sender_socket)
+{
+    std::istringstream iss(input);
+    std::string cmd, target_user, msg;
+    iss >> cmd >> target_user;
+    std::getline(iss, msg); // rest is message
+    std::string sender_name;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex);
+        sender_name = clients[sender_socket];
+    }
+    std::lock_guard<std::mutex> lock(clients_mutex);
+    for (auto &[sock, name] : clients)
+    {
+        if (name == target_user)
+        {
+            std::string full_msg = "[PRIVATE] " + sender_name + ": " + msg;
+            send(sock, full_msg.c_str(), full_msg.size(), 0);
+            return;
+        }
+    }
+    // user not found
+    std::string error = "User not found\n";
+    send(sender_socket, error.c_str(), error.size(), 0);
 }
 
 void handle_client(int client_socket)
@@ -76,11 +103,25 @@ void handle_client(int client_socket)
             username = clients[client_socket];
         }
 
-        std::string message = username + ": " + std::string(buffer, bytes);
-
-        cout << message << std::endl;
-
-        broadcast_message(message, client_socket);
+        std::string input(buffer, bytes);
+        if (input.rfind("/msg ", 0) == 0)
+        {
+            // private message
+            handle_private_message(input, client_socket);
+        }
+        else if (input == "/help")
+        {
+            std::string help =
+                "Commands:\n"
+                "/msg <user> <message> - private message\n";
+            send(client_socket, help.c_str(), help.size(), 0);
+        }
+        else
+        {
+            std::string message = username + ": " + input;
+            cout << message << std::endl;
+            broadcast_message(message, client_socket);
+        }
     }
 }
 
