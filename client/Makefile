@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -pthread -Wall -Wextra
+CXXFLAGS = -std=c++17 -pthread -Wall -Wextra -Iinclude
 TARGET = client
 SRC = client.cpp
 OBJ = $(SRC:.cpp=.o)

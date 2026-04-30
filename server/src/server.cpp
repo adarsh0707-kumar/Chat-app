@@ -1,16 +1,4 @@
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <mutex>
-#include <thread>
-#include <cstring>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <map>
-#include <sstream>
-#include <ctime>
-
-using namespace std;
+#include "../include/server.h"
 
 map<int, string> clients;
 mutex clients_mutex;

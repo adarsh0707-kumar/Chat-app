@@ -1,12 +1,4 @@
-#include <iostream>
-#include <cstring>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <thread>
-#include <atomic>
-
-using namespace std;
+#include "include/client.h"
 
 atomic<bool> running(true);
 

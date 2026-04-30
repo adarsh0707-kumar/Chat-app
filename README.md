@@ -19,10 +19,13 @@ chat-app/
 ├── server/
 │   ├── src/
 │   │   └── server.cpp
-│   ├── include/          # (for future headers)
+│   ├── include/
+│   │   └── server.h
 │   └── Makefile
 ├── client/
 │   ├── client.cpp
+│   ├── include/
+│   │   └── client.h
 │   └── Makefile
 └── README.md
 ```
