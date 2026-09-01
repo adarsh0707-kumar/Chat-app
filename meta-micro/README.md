@@ -9,6 +9,15 @@ Built from the project's System Requirements Document — see `2a. Product
 Interpretation`, `3. Functional Requirements`, and `6. Visuals Colors and
 Theme` for the source spec this implementation follows.
 
+## Documentation
+
+| Doc | Covers |
+|---|---|
+| [`docs/PRD.md`](docs/PRD.md) | Problem statement, goals, personas, functional & non-functional requirements, success metrics |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System diagram, backend/frontend layout, multi-tenancy, security, WhatsApp integration, deployment, known technical debt |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | ER diagram, table-by-table field reference, enums, cascade behavior |
+| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | Every endpoint, request/response shapes, auth requirements (also live at `/docs` on the running backend) |
+
 ## Stack
 
 - **Frontend**: React (Vite) + Tailwind CSS + react-i18next, talking to the

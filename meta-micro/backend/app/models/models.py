@@ -91,7 +91,7 @@ class Batch(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     institute: Mapped["Institute"] = relationship(back_populates="batches")
-    students: Mapped[list["Student"]] = relationship(back_populates="batch")
+    students: Mapped[list["Student"]] = relationship(back_populates="batch", passive_deletes=True)
 
 
 class Student(Base):
@@ -99,7 +99,9 @@ class Student(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     institute_id: Mapped[int] = mapped_column(ForeignKey("institutes.id"))
-    batch_id: Mapped[int | None] = mapped_column(ForeignKey("batches.id"), nullable=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("batches.id", ondelete="SET NULL"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(255))
     parent_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     parent_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
